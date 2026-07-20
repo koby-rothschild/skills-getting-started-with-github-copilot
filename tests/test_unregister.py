@@ -9,20 +9,26 @@ client = TestClient(app)
 
 
 def test_unregister_participant_removes_email_from_activity():
+    # Arrange
     original_activities = deepcopy(activities)
+    activity_name = "Chess Club"
+    encoded_activity_name = "Chess%20Club"
+    email = "teststudent@example.com"
 
     try:
+        # Act
         signup_response = client.post(
-            "/activities/Chess%20Club/signup?email=teststudent@example.com"
+            f"/activities/{encoded_activity_name}/signup?email={email}"
         )
-        assert signup_response.status_code == 200
-
         unregister_response = client.delete(
-            "/activities/Chess%20Club/unregister?email=teststudent@example.com"
+            f"/activities/{encoded_activity_name}/unregister?email={email}"
         )
 
+        # Assert
+        assert signup_response.status_code == 200
         assert unregister_response.status_code == 200
-        assert "teststudent@example.com" not in activities["Chess Club"]["participants"]
+        assert email not in activities[activity_name]["participants"]
     finally:
+        # Cleanup
         activities.clear()
         activities.update(deepcopy(original_activities))

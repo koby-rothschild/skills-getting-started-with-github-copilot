@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -20,9 +21,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
         const participantsMarkup = details.participants.length > 0
-          ? `<ul class="participants-list">${details.participants
-              .map((participant) => `<li>${participant}</li>`)
-              .join("")}</ul>`
+          ? `<div class="participants-list">${details.participants
+              .map((participant) => `
+                <button class="participant-pill" type="button" data-activity="${name}" data-email="${participant}">
+                  <span>${participant}</span>
+                  <span class="participant-remove" aria-label="Remove ${participant}">×</span>
+                </button>
+              `)
+              .join("")}</div>`
           : '<p class="participants-empty">No participants yet.</p>';
 
         activityCard.innerHTML = `
@@ -50,6 +56,38 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function unregisterParticipant(activityName, email) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+        await fetchActivities();
+      } else {
+        messageDiv.textContent = result.detail || "An error occurred";
+        messageDiv.className = "error";
+      }
+
+      messageDiv.classList.remove("hidden");
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
+    } catch (error) {
+      messageDiv.textContent = "Failed to unregister. Please try again.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error unregistering participant:", error);
+    }
+  }
+
   // Handle form submission
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -70,6 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
+        await fetchActivities();
         signupForm.reset();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
@@ -88,6 +127,17 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
     }
+  });
+
+  activitiesList.addEventListener("click", (event) => {
+    const button = event.target.closest(".participant-pill");
+    if (!button) {
+      return;
+    }
+
+    const activityName = button.dataset.activity;
+    const email = button.dataset.email;
+    unregisterParticipant(activityName, email);
   });
 
   // Initialize app
